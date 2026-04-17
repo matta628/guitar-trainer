@@ -1,48 +1,62 @@
-/**
- * main.js
- * Wires together AudioEngine + ChordDetector and drives the latency tester UI.
- *
- * Game loop:
- *   1. Show a target chord
- *   2. Record timestamp (T_shown)
- *   3. Poll ChordDetector until target chord is detected
- *   4. Record timestamp (T_detected)
- *   5. Latency = T_detected - T_shown
- *   6. Show result, update stats
- */
-
 import { AudioEngine } from "./audio/AudioEngine.js";
 import { ChordDetector } from "./audio/ChordDetector.js";
 import { randomChord, chordMatches } from "./utils/chordUtils.js";
+import { notesMatch } from "./utils/noteUtils.js";
 
 // ── DOM refs ────────────────────────────────────────────────────────────────
-const startBtn      = document.getElementById("start-btn");
-const nextBtn       = document.getElementById("next-btn");
-const freqDisplay   = document.getElementById("freq-display");
-const notesDisplay  = document.getElementById("notes-display");
-const chordDisplay  = document.getElementById("chord-display");
-const targetChord   = document.getElementById("target-chord");
-const resultBanner  = document.getElementById("result-banner");
+const startBtn       = document.getElementById("start-btn");
+const nextBtn        = document.getElementById("next-btn");
+const freqDisplay    = document.getElementById("freq-display");
+const notesDisplay   = document.getElementById("notes-display");
+const chordDisplay   = document.getElementById("chord-display");
+const targetChord    = document.getElementById("target-chord");
+const resultBanner   = document.getElementById("result-banner");
 const latencyDisplay = document.getElementById("latency-display");
-const statAttempts  = document.getElementById("stat-attempts");
-const statCorrect   = document.getElementById("stat-correct");
-const statLatency   = document.getElementById("stat-latency");
-const statMin       = document.getElementById("stat-min");
+const statAttempts   = document.getElementById("stat-attempts");
+const statCorrect    = document.getElementById("stat-correct");
+const statLatency    = document.getElementById("stat-latency");
+const statMin        = document.getElementById("stat-min");
+const noteInstruction = document.getElementById("note-instruction");
+const noteTargetEl   = document.getElementById("note-target");
+const noteResultEl   = document.getElementById("note-result");
 
-// ── State ───────────────────────────────────────────────────────────────────
+// ── Note pool ────────────────────────────────────────────────────────────────
+const NOTE_TARGETS = [
+  { string: 6, fret: 1, note: "F"  },
+  { string: 6, fret: 3, note: "G"  },
+  { string: 5, fret: 2, note: "B"  },
+  { string: 5, fret: 3, note: "C"  },
+  { string: 4, fret: 1, note: "D#" },
+  { string: 4, fret: 3, note: "F"  },
+  { string: 3, fret: 2, note: "A"  },
+  { string: 3, fret: 4, note: "B"  },
+  { string: 2, fret: 1, note: "C"  },
+  { string: 2, fret: 3, note: "D"  },
+];
+
+let lastNoteIndex = -1;
+function randomNoteTarget() {
+  let idx;
+  do { idx = Math.floor(Math.random() * NOTE_TARGETS.length); } while (idx === lastNoteIndex);
+  lastNoteIndex = idx;
+  return NOTE_TARGETS[idx];
+}
+
+// ── State ────────────────────────────────────────────────────────────────────
 let engine = null;
 let detector = null;
+
+// chord mode
 let currentTarget = null;
 let shownAt = null;
 let waitingForChord = false;
+const stats = { attempts: 0, correct: 0, latencies: [] };
 
-const stats = {
-  attempts: 0,
-  correct: 0,
-  latencies: [],
-};
+// note mode
+let currentNote = null;
+let waitingForNote = false;
 
-// ── Audio pipeline ───────────────────────────────────────────────────────────
+// ── Audio pipeline ────────────────────────────────────────────────────────────
 async function startAudio() {
   startBtn.disabled = true;
   startBtn.textContent = "Connecting...";
@@ -52,6 +66,7 @@ async function startAudio() {
       onChord: handleChordDetected,
       onNote: (note) => {
         freqDisplay.textContent = `${note.freq} Hz  (${note.cents > 0 ? "+" : ""}${note.cents}¢)`;
+        handleNoteDetected(note);
       },
     });
 
@@ -65,6 +80,7 @@ async function startAudio() {
     startBtn.textContent = "Connected ✓";
     nextBtn.disabled = false;
     showNextChord();
+    showNextNote();
   } catch (err) {
     startBtn.disabled = false;
     startBtn.textContent = "Connect Microphone";
@@ -74,7 +90,7 @@ async function startAudio() {
   }
 }
 
-// ── Game loop ────────────────────────────────────────────────────────────────
+// ── Chord game loop ───────────────────────────────────────────────────────────
 function showNextChord() {
   currentTarget = randomChord();
   shownAt = performance.now();
@@ -87,17 +103,13 @@ function showNextChord() {
   nextBtn.disabled = true;
 }
 
-function handleChordDetected({ chord, noteNames, dominantFreq }) {
-  // Always update the raw detection display
+function handleChordDetected({ chord, noteNames }) {
   notesDisplay.textContent = noteNames.join("  ");
   chordDisplay.textContent = chord ?? "—";
 
   if (!waitingForChord || !currentTarget) return;
 
-  const detectedAt = performance.now();
-  const latencyMs = Math.round(detectedAt - shownAt);
-
-  // Check if detected chord matches target
+  const latencyMs = Math.round(performance.now() - shownAt);
   const isCorrect = chord && chordMatches(noteNames, currentTarget);
 
   if (isCorrect) {
@@ -111,14 +123,40 @@ function handleChordDetected({ chord, noteNames, dominantFreq }) {
     resultBanner.className = "result-pass";
     latencyDisplay.textContent = `Detected in ${latencyMs}ms`;
     nextBtn.disabled = false;
+    setTimeout(showNextChord, 1000);
   } else if (chord && chord !== currentTarget) {
-    // Wrong chord — still show feedback but don't advance
     resultBanner.textContent = `✗ That's ${chord ?? "unknown"}`;
     resultBanner.className = "result-fail";
     latencyDisplay.textContent = `Try again — target: ${currentTarget}`;
   }
 }
 
+// ── Note game loop ────────────────────────────────────────────────────────────
+function showNextNote() {
+  currentNote = randomNoteTarget();
+  waitingForNote = true;
+
+  noteInstruction.textContent = `String ${currentNote.string}, Fret ${currentNote.fret}`;
+  noteTargetEl.textContent = currentNote.note;
+  noteResultEl.textContent = "—";
+  noteResultEl.style.color = "#666";
+}
+
+function handleNoteDetected(note) {
+  if (!waitingForNote || !currentNote) return;
+
+  if (notesMatch(note, currentNote.note)) {
+    waitingForNote = false;
+    noteResultEl.textContent = `✓ ${currentNote.note}!`;
+    noteResultEl.style.color = "#1db954";
+    setTimeout(showNextNote, 1000);
+  } else {
+    noteResultEl.textContent = `Hearing: ${note.name}`;
+    noteResultEl.style.color = "#666";
+  }
+}
+
+// ── Stats ─────────────────────────────────────────────────────────────────────
 function updateStats() {
   statAttempts.textContent = stats.attempts;
   statCorrect.textContent = stats.correct;
@@ -126,11 +164,8 @@ function updateStats() {
   if (stats.latencies.length > 0) {
     const avg = Math.round(stats.latencies.reduce((a, b) => a + b, 0) / stats.latencies.length);
     const min = Math.min(...stats.latencies);
-
-    const avgEl = statLatency;
-    avgEl.textContent = `${avg}ms`;
-    avgEl.className = latencyClass(avg);
-
+    statLatency.textContent = `${avg}ms`;
+    statLatency.className = latencyClass(avg);
     statMin.textContent = `${min}ms`;
   }
 }
@@ -141,6 +176,6 @@ function latencyClass(ms) {
   return "value bad";
 }
 
-// ── Event listeners ──────────────────────────────────────────────────────────
+// ── Event listeners ───────────────────────────────────────────────────────────
 startBtn.addEventListener("click", startAudio);
 nextBtn.addEventListener("click", showNextChord);

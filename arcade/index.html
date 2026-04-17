@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Guitar Arcade</title>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+
+      body {
+        font-family: monospace;
+        background: #0a0a0a;
+        color: #e0e0e0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+      }
+
+      .screen {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 24px;
+        width: 100%;
+        max-width: 480px;
+        padding: 32px;
+        text-align: center;
+      }
+
+      .screen[hidden] { display: none; }
+
+      /* ── Start screen ──────────────────────────────────────── */
+      #screen-start h1 {
+        font-size: 2.4rem;
+        letter-spacing: 6px;
+        text-transform: uppercase;
+        color: #fff;
+      }
+
+      #screen-start p {
+        color: #555;
+        font-size: 0.85rem;
+        line-height: 1.6;
+      }
+
+      .best-score {
+        font-size: 0.8rem;
+        color: #444;
+        letter-spacing: 2px;
+      }
+
+      .best-score span {
+        color: #1db954;
+      }
+
+      .time-control {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        font-size: 0.85rem;
+        color: #aaa;
+      }
+
+      .time-control button {
+        width: 32px;
+        height: 32px;
+        background: #1a1a1a;
+        color: #e0e0e0;
+        border: 1px solid #333;
+        border-radius: 4px;
+        font-size: 1.2rem;
+        cursor: pointer;
+        font-family: monospace;
+        line-height: 1;
+      }
+
+      .time-control button:hover { border-color: #555; }
+
+      #time-value {
+        min-width: 36px;
+        text-align: center;
+        font-size: 1.1rem;
+        color: #fff;
+      }
+
+      #time-score-hint {
+        font-size: 0.7rem;
+        color: #444;
+        letter-spacing: 1px;
+      }
+
+      /* ── Game screen ───────────────────────────────────────── */
+      #hud {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        width: 100%;
+        font-size: 0.8rem;
+      }
+
+      #score-display {
+        font-size: 1.4rem;
+        color: #fff;
+        min-width: 80px;
+        text-align: left;
+      }
+
+      #difficulty-badge {
+        padding: 3px 10px;
+        border-radius: 3px;
+        font-size: 0.65rem;
+        letter-spacing: 2px;
+        font-weight: bold;
+        background: #1db95422;
+        color: #1db954;
+        border: 1px solid #1db95444;
+      }
+
+      #lives-display {
+        font-size: 1.1rem;
+        letter-spacing: 4px;
+        min-width: 80px;
+        text-align: right;
+      }
+
+      #streak-display {
+        font-size: 0.75rem;
+        color: #555;
+        letter-spacing: 1px;
+        height: 16px;
+      }
+
+      #chord-display {
+        font-size: 5rem;
+        font-weight: bold;
+        color: #fff;
+        min-height: 90px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        letter-spacing: 2px;
+      }
+
+      #timer-bar-container {
+        width: 100%;
+        height: 6px;
+        background: #1a1a1a;
+        border-radius: 3px;
+        overflow: hidden;
+      }
+
+      #timer-bar {
+        height: 100%;
+        width: 100%;
+        background: #1db954;
+        border-radius: 3px;
+        transition: background-color 0.3s;
+      }
+
+      #feedback {
+        font-size: 1.1rem;
+        font-weight: bold;
+        min-height: 28px;
+        color: #555;
+      }
+
+      #feedback.correct { color: #1db954; }
+      #feedback.wrong   { color: #e04040; }
+      #feedback.timeout { color: #e07020; }
+
+      #multiplier-display {
+        font-size: 0.75rem;
+        color: #444;
+        min-height: 16px;
+        letter-spacing: 1px;
+      }
+
+      #multiplier-display.active {
+        color: #f0a500;
+      }
+
+      /* ── Game over screen ──────────────────────────────────── */
+      #screen-gameover h2 {
+        font-size: 2rem;
+        letter-spacing: 4px;
+        text-transform: uppercase;
+        color: #e04040;
+      }
+
+      #final-score {
+        font-size: 3rem;
+        font-weight: bold;
+        color: #fff;
+      }
+
+      #final-label {
+        font-size: 0.7rem;
+        color: #555;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+      }
+
+      #new-high-score {
+        font-size: 0.85rem;
+        color: #f0a500;
+        letter-spacing: 2px;
+        animation: pulse 1s ease-in-out infinite alternate;
+      }
+
+      @keyframes pulse {
+        from { opacity: 0.6; }
+        to   { opacity: 1; }
+      }
+
+      #reached-difficulty {
+        font-size: 0.75rem;
+        color: #444;
+        letter-spacing: 1px;
+      }
+
+      /* ── Shared button ─────────────────────────────────────── */
+      .btn {
+        padding: 14px 40px;
+        font-size: 1rem;
+        font-family: monospace;
+        background: #1db954;
+        color: #000;
+        border: none;
+        cursor: pointer;
+        border-radius: 4px;
+        font-weight: bold;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+      }
+
+      .btn:hover { background: #1ed760; }
+      .btn:disabled { background: #333; color: #666; cursor: default; }
+    </style>
+  </head>
+  <body>
+
+    <!-- Start screen -->
+    <div class="screen" id="screen-start">
+      <h1>Guitar<br>Arcade</h1>
+      <p>Connect your guitar.<br>Hit the chord before time runs out.<br>Don't lose all 3 lives.</p>
+      <div class="best-score">BEST &nbsp;<span id="best-score-start">0</span></div>
+
+      <div class="time-control">
+        <button id="btn-time-down">−</button>
+        <span>Time: <span id="time-value">6s</span></span>
+        <button id="btn-time-up">+</button>
+      </div>
+      <div id="time-score-hint">score multiplier: x1.0</div>
+
+      <button class="btn" id="btn-start">Connect + Play</button>
+    </div>
+
+    <!-- Game screen -->
+    <div class="screen" id="screen-game" hidden>
+      <div id="hud">
+        <div id="score-display">0</div>
+        <div id="difficulty-badge">EASY</div>
+        <div id="lives-display">♥♥♥</div>
+      </div>
+
+      <div id="streak-display"></div>
+
+      <div id="chord-display">—</div>
+
+      <div id="timer-bar-container">
+        <div id="timer-bar"></div>
+      </div>
+
+      <div id="feedback">Waiting for strum...</div>
+      <div id="multiplier-display"></div>
+    </div>
+
+    <!-- Game over screen -->
+    <div class="screen" id="screen-gameover" hidden>
+      <h2>Game Over</h2>
+      <div id="final-label">Score</div>
+      <div id="final-score">0</div>
+      <div id="new-high-score" hidden>★ New High Score ★</div>
+      <div id="reached-difficulty"></div>
+      <button class="btn" id="btn-restart">Play Again</button>
+    </div>
+
+    <script type="module" src="src/main.js"></script>
+  </body>
+</html>
