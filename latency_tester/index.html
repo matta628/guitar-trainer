@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Guitar Trainer — Latency Tester</title>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+
+      body {
+        font-family: monospace;
+        background: #0f0f0f;
+        color: #e0e0e0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+        gap: 24px;
+        padding: 32px;
+      }
+
+      h1 { font-size: 1.4rem; color: #aaa; letter-spacing: 2px; text-transform: uppercase; }
+
+      #start-btn {
+        padding: 12px 32px;
+        font-size: 1rem;
+        font-family: monospace;
+        background: #1db954;
+        color: #000;
+        border: none;
+        cursor: pointer;
+        border-radius: 4px;
+        font-weight: bold;
+        letter-spacing: 1px;
+      }
+      #start-btn:disabled { background: #444; color: #888; cursor: default; }
+
+      .panel {
+        border: 1px solid #333;
+        border-radius: 6px;
+        padding: 20px 28px;
+        min-width: 340px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+
+      .panel-title {
+        font-size: 0.7rem;
+        color: #666;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+        margin-bottom: 4px;
+        border-bottom: 1px solid #222;
+        padding-bottom: 6px;
+      }
+
+      .data-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        gap: 16px;
+      }
+
+      .label { font-size: 0.75rem; color: #666; }
+
+      .value {
+        font-size: 1.1rem;
+        color: #e0e0e0;
+        min-width: 120px;
+        text-align: right;
+      }
+
+      .value.highlight { color: #1db954; font-size: 1.4rem; }
+      .value.warn { color: #f0a500; }
+      .value.bad { color: #e04040; }
+
+      #target-chord {
+        font-size: 3rem;
+        font-weight: bold;
+        color: #fff;
+        text-align: center;
+        min-height: 60px;
+      }
+
+      #result-banner {
+        font-size: 1.2rem;
+        font-weight: bold;
+        min-height: 32px;
+        text-align: center;
+      }
+      .result-pass { color: #1db954; }
+      .result-fail { color: #e04040; }
+
+      #latency-display {
+        font-size: 0.85rem;
+        color: #555;
+        text-align: center;
+        min-height: 20px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Guitar Trainer · Latency Tester</h1>
+
+    <button id="start-btn">Connect Microphone</button>
+
+    <div class="panel">
+      <div class="panel-title">Raw Detection</div>
+      <div class="data-row">
+        <span class="label">Dominant Freq</span>
+        <span class="value" id="freq-display">— Hz</span>
+      </div>
+      <div class="data-row">
+        <span class="label">Detected Notes</span>
+        <span class="value" id="notes-display">—</span>
+      </div>
+      <div class="data-row">
+        <span class="label">Detected Chord</span>
+        <span class="value highlight" id="chord-display">—</span>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">Game Loop Test</div>
+      <div id="target-chord">—</div>
+      <div id="result-banner">—</div>
+      <div id="latency-display">—</div>
+      <button id="next-btn" disabled style="margin-top:8px; padding:8px 20px; font-family:monospace; background:#222; color:#aaa; border:1px solid #444; cursor:pointer; border-radius:4px;">
+        Next Chord →
+      </button>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">Session Stats</div>
+      <div class="data-row">
+        <span class="label">Attempts</span>
+        <span class="value" id="stat-attempts">0</span>
+      </div>
+      <div class="data-row">
+        <span class="label">Correct</span>
+        <span class="value" id="stat-correct">0</span>
+      </div>
+      <div class="data-row">
+        <span class="label">Avg Latency</span>
+        <span class="value" id="stat-latency">— ms</span>
+      </div>
+      <div class="data-row">
+        <span class="label">Min Latency</span>
+        <span class="value" id="stat-min">— ms</span>
+      </div>
+    </div>
+
+    <script type="module" src="src/main.js"></script>
+  </body>
+</html>
