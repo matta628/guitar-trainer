@@ -21,15 +21,9 @@
 - Eventually: auto-suggest tier changes based on median response time data
   (e.g. if "F" is consistently slow across profiles, bump it to medium)
 
-## Timer Progression
-- Default timer starts at 10s for everyone (not 6s)
-- Timer shortens automatically as difficulty level increases:
-    easy   → 10s
-    medium →  7s
-    hard   →  5s
-    expert →  3.5s
-- Remove manual time adjuster (or make it an "advanced" toggle)
-- Rationale: prevents indefinite streaks at easy difficulty with a long timer
+## ~~Timer Progression~~ ✓ Done
+- Timer auto-scales per difficulty: easy 10s, medium 7s, hard 5s, expert 3.5s
+- Manual time adjuster removed; start screen shows the tier breakdown
 
 ## Notes / Open Questions
 - Profiles are local-only for now; cloud sync is out of scope until there's a backend

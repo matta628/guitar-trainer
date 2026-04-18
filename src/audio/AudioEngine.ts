@@ -48,13 +48,16 @@ export class AudioEngine {
     if (!this.running || !this.analyser || !this.audioContext) return;
 
     const bufferLength = this.analyser.frequencyBinCount;
-    const freqData = new Float32Array(bufferLength);
+    const freqData       = new Float32Array(bufferLength);
+    const timeDomainData = new Float32Array(this.fftSize);
     this.analyser.getFloatFrequencyData(freqData);
+    this.analyser.getFloatTimeDomainData(timeDomainData);
 
     this.onFrame?.(freqData, {
       sampleRate: this.audioContext.sampleRate,
       bufferLength,
       fftSize: this.fftSize,
+      timeDomainData,
     });
 
     this._rafId = requestAnimationFrame(() => this._poll());

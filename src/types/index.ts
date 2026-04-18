@@ -25,6 +25,7 @@ export interface AudioFrameContext {
   sampleRate: number;
   bufferLength: number;
   fftSize: number;
+  timeDomainData: Float32Array;
 }
 
 export interface DifficultyConfig {

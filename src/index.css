@@ -287,6 +287,41 @@ button {
   transition: background 0.3s;
 }
 
+.arc-beats {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: center;
+  padding: 0.5rem 0;
+}
+.arc-beat-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #333;
+  transition: background 0.08s;
+}
+.arc-beat-dot.active {
+  background: #4ade80;
+  box-shadow: 0 0 6px #4ade80;
+}
+
+.arc-next-wrap {
+  text-align: center;
+  margin-top: 0.75rem;
+}
+.arc-next-label {
+  font-size: 0.7rem;
+  color: #555;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+.arc-next-chord {
+  font-size: 1.8rem;
+  color: #666;
+  letter-spacing: 2px;
+  font-family: monospace;
+}
+
 .arc-game-body {
   flex: 1;
   display: flex;
