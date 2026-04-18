@@ -9,21 +9,26 @@ import type { FretPosition, NoteResult } from "../../types";
 
 const STABLE_THRESHOLD = 3;
 
-type TraversalMode = "sequential" | "skip";
+type TraversalMode = "sequential" | "seq3" | "seq4";
 type DisplayMode   = "notes" | "degrees";
 
 interface Props { onExit: () => void; }
 interface Stats { correct: number; streak: number; bestStreak: number; }
 
-// Ping-pong index sequence: 0,1,2,...,n-1,n-2,...,1 (step=1) or skip every other (step=2)
-function buildCycle(n: number, step: number): number[] {
+// Ping-pong index sequence: 0,1,2,...,n-1,n-2,...,1
+function buildCycle(n: number): number[] {
   if (n === 0) return [];
-  const up: number[] = [];
-  for (let i = 0; i < n; i += step) up.push(i);
-  if (up.length === 1) return up;
-  const down = [...up].reverse().slice(1);
-  if (down[down.length - 1] === up[0]) down.pop();
-  return [...up, ...down];
+  const up = Array.from({ length: n }, (_, i) => i);
+  if (n === 1) return up;
+  return [...up, ...up.slice(1, -1).reverse()];
+}
+
+function buildSeqN(n: number, g: number): number[] {
+  if (n < g) return [];
+  const seq: number[] = [];
+  for (let i = 0; i <= n - g; i++) { for (let j = 0; j < g; j++) seq.push(i + j); }
+  for (let i = n - 1; i >= g - 1; i--) { for (let j = 0; j < g; j++) seq.push(i - j); }
+  return seq;
 }
 
 export default function ScaleTrainer({ onExit }: Props) {
@@ -44,8 +49,9 @@ export default function ScaleTrainer({ onExit }: Props) {
 
   useEffect(() => {
     const positions = getPatternPositions(key, patternIdx);
-    const step      = mode === "skip" ? 2 : 1;
-    const c         = buildCycle(positions.length, step);
+    const c = mode === "seq4" ? buildSeqN(positions.length, 4)
+            : mode === "seq3" ? buildSeqN(positions.length, 3)
+            : buildCycle(positions.length);
     positionsRef.current = positions;
     cycleRef.current     = c;
     posRef.current       = 0;
@@ -135,8 +141,11 @@ export default function ScaleTrainer({ onExit }: Props) {
           <button className={`sc-mode-btn${mode === "sequential" ? " sc-mode-active" : ""}`} onClick={() => setMode("sequential")}>
             Sequential
           </button>
-          <button className={`sc-mode-btn${mode === "skip" ? " sc-mode-active" : ""}`} onClick={() => setMode("skip")}>
-            Skip (3rds)
+          <button className={`sc-mode-btn${mode === "seq3" ? " sc-mode-active" : ""}`} onClick={() => setMode("seq3")}>
+            Groups of 3
+          </button>
+          <button className={`sc-mode-btn${mode === "seq4" ? " sc-mode-active" : ""}`} onClick={() => setMode("seq4")}>
+            Groups of 4
           </button>
         </div>
 
