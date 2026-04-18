@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAudio } from "../../hooks/useAudio";
 import { randomChord, chordMatches, DIFFICULTIES, DIFFICULTY_ORDER } from "../../utils/chordUtils";
-import ChordDiagram from "./ChordDiagram";
+import { isChordUnlocked, getAllUnlockedVoicings, chordDiagramSVG } from "../../utils/voicings";
 import type { ChordResult, Difficulty } from "../../types";
 
 const MAX_LIVES           = 3;
@@ -21,6 +21,12 @@ interface FeedbackState {
 function getBest(): number { return parseInt(localStorage.getItem("guitar_arcade_best") ?? "0", 10); }
 function saveBest(s: number): void { localStorage.setItem("guitar_arcade_best", String(s)); }
 
+// Returns chords available at a difficulty level (unlocked by user in library)
+function availableChords(diffIdx: number): string[] {
+  const diff = DIFFICULTY_ORDER[diffIdx] as Difficulty;
+  return DIFFICULTIES[diff].chords.filter(isChordUnlocked);
+}
+
 interface Props {
   onExit: () => void;
 }
@@ -37,7 +43,6 @@ export default function Arcade({ onExit }: Props) {
   const [highScore, setHighScore]       = useState(getBest);
   const [gameOverData, setGameOverData] = useState({ score: 0, isNew: false, diffLabel: "EASY" });
 
-  // Mutable game state for callbacks (avoids stale closure issues in RAF/audio)
   const G = useRef({
     waiting: false,
     chord: "",
@@ -57,7 +62,6 @@ export default function Arcade({ onExit }: Props) {
   function timeMult(): number {
     return Math.max(0.5, Math.round((DEFAULT_TIME_SEC / G.customTimeSec) * 10) / 10);
   }
-
   function streakMult(s: number): number {
     return s >= 8 ? 4 : s >= 5 ? 3 : s >= 3 ? 2 : 1;
   }
@@ -92,16 +96,31 @@ export default function Arcade({ onExit }: Props) {
     setDiffIdx(G.diffIdx);
   }
 
+  // Find a difficulty idx that has unlocked chords (search downward from current)
+  function findPlayableDiff(startIdx: number): number {
+    for (let i = startIdx; i >= 0; i--) {
+      if (availableChords(i).length > 0) return i;
+    }
+    return -1; // no chords unlocked at all
+  }
+
   const nextChord = useCallback(() => {
     stopTimer();
-    const chord = randomChord(DIFFICULTY_ORDER[G.diffIdx] as Difficulty);
-    G.chord       = chord;
+    const pool  = availableChords(G.diffIdx);
+    if (pool.length === 0) {
+      // Level down until we find available chords
+      const d = findPlayableDiff(G.diffIdx - 1);
+      if (d < 0) { endGame(); return; }
+      G.diffIdx = d;
+    }
+    const chord = randomChord(DIFFICULTY_ORDER[G.diffIdx] as Difficulty, availableChords(G.diffIdx));
+    G.chord        = chord;
     G.chordShownAt = performance.now();
     G.waiting      = true;
     setCurrentChord(chord);
     setFeedback({ text: "Strum it!", cls: "neutral" });
     startTimer(G.customTimeSec * 1000);
-  }, []); // G is a stable ref object
+  }, []);
 
   function handleMiss(reason: "timeout" | "wrong"): void {
     G.waiting = false;
@@ -111,16 +130,14 @@ export default function Arcade({ onExit }: Props) {
     G.missInRow++;
     G.correctInRow = 0;
     if (G.missInRow >= MISSES_TO_LEVEL_DOWN && G.diffIdx > 0) {
-      G.diffIdx--;
+      const d = findPlayableDiff(G.diffIdx - 1);
+      if (d >= 0) { G.diffIdx = d; }
       G.missInRow = 0;
     }
     setFeedback({ text: reason === "timeout" ? "✗ Too slow!" : "✗ Wrong chord", cls: reason === "timeout" ? "timeout" : "wrong" });
     syncState();
-    if (G.lives <= 0) {
-      setTimeout(endGame, 1000);
-    } else {
-      setTimeout(nextChord, 1000);
-    }
+    if (G.lives <= 0) setTimeout(endGame, 1000);
+    else              setTimeout(nextChord, 1000);
   }
 
   function handleCorrect(detectedChord: string): void {
@@ -135,9 +152,14 @@ export default function Arcade({ onExit }: Props) {
     const points     = Math.round(100 * sm * timeMult()) + speedBonus;
     G.score += points;
     if (G.correctInRow >= CORRECT_TO_LEVEL_UP && G.diffIdx < DIFFICULTY_ORDER.length - 1) {
-      G.diffIdx++;
-      G.correctInRow = 0;
-      setFeedback({ text: `✓ ${detectedChord}  +${points}  ↑ LEVEL UP`, cls: "correct" });
+      const nextD = findPlayableDiff(G.diffIdx + 1) ?? G.diffIdx;
+      if (nextD > G.diffIdx && availableChords(nextD).length > 0) {
+        G.diffIdx = nextD;
+        G.correctInRow = 0;
+        setFeedback({ text: `✓ ${detectedChord}  +${points}  ↑ LEVEL UP`, cls: "correct" });
+      } else {
+        setFeedback({ text: speedBonus ? `✓ ${detectedChord}  +${points} (fast!)` : `✓ ${detectedChord}  +${points}`, cls: "correct" });
+      }
     } else {
       setFeedback({ text: speedBonus ? `✓ ${detectedChord}  +${points} (fast!)` : `✓ ${detectedChord}  +${points}`, cls: "correct" });
     }
@@ -158,6 +180,9 @@ export default function Arcade({ onExit }: Props) {
   function startGame(): void {
     G.score = 0; G.lives = MAX_LIVES; G.streak = 0;
     G.diffIdx = 0; G.correctInRow = 0; G.missInRow = 0;
+    // Start at highest difficulty with unlocked chords that is still "easy"
+    const d = findPlayableDiff(0);
+    if (d >= 0) G.diffIdx = d;
     syncState();
     setPhase("game");
     setTimeout(nextChord, 50);
@@ -170,11 +195,10 @@ export default function Arcade({ onExit }: Props) {
     } else if (chord) {
       setFeedback({ text: `Hearing: ${chord} — need ${G.chord}`, cls: "wrong" });
     }
-  }, []); // reads from G (stable ref) and handleCorrect (defined in scope)
+  }, []);
 
   useAudio({ onChord: handleChord });
 
-  // Escape to quit during game
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape" && phase === "game") { stopTimer(); G.waiting = false; onExit(); }
@@ -185,40 +209,50 @@ export default function Arcade({ onExit }: Props) {
 
   const diff = DIFFICULTIES[DIFFICULTY_ORDER[diffIdx] as Difficulty];
 
-  // ── Start screen ───────────────────────────────────────────────────────────
+  // Total unlocked chords across all difficulties
+  const totalUnlocked = Object.keys(getAllUnlockedVoicings()).length;
+
+  // ── Start screen ──────────────────────────────────────────────────────────
   if (phase === "start") {
+    const canPlay = totalUnlocked > 0;
     return (
       <div className="arcade">
         <div className="arc-start">
           <div className="arc-start-title">Guitar Arcade</div>
           <div className="arc-start-hs">High score: {highScore}</div>
 
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "0.4rem" }}>
-            <div className="arc-time-row">
-              <button className="btn btn-sm" onClick={() => {
-                const t = Math.max(MIN_TIME_SEC, customTimeSec - 1);
-                setCustomTimeSec(t); G.customTimeSec = t;
-              }}>◄</button>
-              <span className="arc-time-val">{customTimeSec}s</span>
-              <button className="btn btn-sm" onClick={() => {
-                const t = Math.min(MAX_TIME_SEC, customTimeSec + 1);
-                setCustomTimeSec(t); G.customTimeSec = t;
-              }}>►</button>
-              <span style={{ color: "#888" }}>per chord</span>
+          {!canPlay ? (
+            <div className="arc-no-chords">
+              <p>No chords unlocked yet.</p>
+              <p>Visit the <strong>Chord Library</strong> to strum chords and unlock them.</p>
+              <button className="btn btn-primary" onClick={onExit}>← Go to Library</button>
             </div>
-            <div className="arc-time-hint">score multiplier: x{Math.max(0.5, Math.round((DEFAULT_TIME_SEC / customTimeSec) * 10) / 10).toFixed(1)}</div>
-          </div>
-
-          <div className="arc-start-actions">
-            <button className="btn btn-primary" onClick={startGame}>Start Game</button>
-            <button className="btn-back btn" onClick={onExit}>← Home</button>
-          </div>
+          ) : (
+            <>
+              <div className="arc-start-pool">
+                {totalUnlocked} chord{totalUnlocked !== 1 ? "s" : ""} unlocked
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "0.4rem" }}>
+                <div className="arc-time-row">
+                  <button className="btn btn-sm" onClick={() => { const t = Math.max(MIN_TIME_SEC, customTimeSec - 1); setCustomTimeSec(t); G.customTimeSec = t; }}>◄</button>
+                  <span className="arc-time-val">{customTimeSec}s</span>
+                  <button className="btn btn-sm" onClick={() => { const t = Math.min(MAX_TIME_SEC, customTimeSec + 1); setCustomTimeSec(t); G.customTimeSec = t; }}>►</button>
+                  <span style={{ color: "#888" }}>per chord</span>
+                </div>
+                <div className="arc-time-hint">score multiplier: x{Math.max(0.5, Math.round((DEFAULT_TIME_SEC / customTimeSec) * 10) / 10).toFixed(1)}</div>
+              </div>
+              <div className="arc-start-actions">
+                <button className="btn btn-primary" onClick={startGame}>Start Game</button>
+                <button className="btn-back btn" onClick={onExit}>← Home</button>
+              </div>
+            </>
+          )}
         </div>
       </div>
     );
   }
 
-  // ── Game over screen ───────────────────────────────────────────────────────
+  // ── Game over screen ──────────────────────────────────────────────────────
   if (phase === "gameover") {
     return (
       <div className="arcade">
@@ -236,35 +270,32 @@ export default function Arcade({ onExit }: Props) {
     );
   }
 
-  // ── Game screen ────────────────────────────────────────────────────────────
+  // ── Game screen ───────────────────────────────────────────────────────────
   return (
     <div className="arcade">
-      {/* HUD */}
       <div className="arc-hud">
         <button className="btn-back btn" onClick={() => { stopTimer(); G.waiting = false; onExit(); }}>← Quit</button>
         <span className="arc-hud-score">{score}</span>
-        <span className="arc-hud-lives">
-          {"♥".repeat(lives)}{"♡".repeat(MAX_LIVES - lives)}
-        </span>
-        <span
-          className="arc-diff-badge"
-          style={{ color: diff.color, background: diff.color + "22", borderColor: diff.color + "44" }}
-        >
+        <span className="arc-hud-lives">{"♥".repeat(lives)}{"♡".repeat(MAX_LIVES - lives)}</span>
+        <span className="arc-diff-badge" style={{ color: diff.color, background: diff.color + "22", borderColor: diff.color + "44" }}>
           {diff.label}
         </span>
         {streak >= 3 && <span className="arc-hud-streak">{streak} STREAK</span>}
         {streak >= 3 && <span className="arc-hud-mult">x{streakMult(streak)}</span>}
       </div>
 
-      {/* Timer bar */}
       <div className="arc-timer-wrap">
         <div ref={timerBarRef} className="arc-timer-bar" />
       </div>
 
-      {/* Game body */}
       <div className="arc-game-body">
         <div className="arc-chord-name">{currentChord}</div>
-        {currentChord && <ChordDiagram chord={currentChord} />}
+        {currentChord && (
+          <div className="arc-diagram-wrap">
+            <span className="arc-diagram-label">voicing</span>
+            <div dangerouslySetInnerHTML={{ __html: chordDiagramSVG(currentChord, 1.8) }} />
+          </div>
+        )}
         <div className={`arc-feedback arc-feedback-${feedback.cls}`}>{feedback.text}</div>
       </div>
     </div>

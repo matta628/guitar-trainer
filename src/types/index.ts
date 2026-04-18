@@ -34,5 +34,5 @@ export interface DifficultyConfig {
   chords: string[];
 }
 
-export type Screen = "home" | "arcade" | "scale";
+export type Screen = "home" | "arcade" | "scale" | "library";
 export type Difficulty = "easy" | "medium" | "hard" | "expert";

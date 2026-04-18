@@ -28,6 +28,14 @@ export default function Home({ onSelect }: Props) {
             Practice major pentatonic scales on an interactive fretboard.
           </span>
         </button>
+
+        <button className="mode-card" onClick={() => onSelect("library")}>
+          <span className="mode-card-icon">📖</span>
+          <span className="mode-card-name">Chord Library</span>
+          <span className="mode-card-desc">
+            Browse all chord voicings. Cycle through shapes and set your preferred fingering.
+          </span>
+        </button>
       </div>
     </div>
   );

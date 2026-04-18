@@ -1,72 +1,81 @@
-import { useState, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useAudio } from "../../hooks/useAudio";
-import { getPentatonicPositions, NOTE_NAMES, STRING_NUMS } from "../../utils/fretboard";
+import {
+  getPatternPositions, patternFretRange, NOTE_NAMES, STRING_NUMS,
+  PATTERN_LABELS, PATTERN_HINTS,
+} from "../../utils/fretboard";
 import Fretboard from "./Fretboard";
 import type { FretPosition, NoteResult } from "../../types";
 
-const KEYS     = NOTE_NAMES;
-const MIN_FRET = 3;
-const MAX_FRET = 13;
 const STABLE_THRESHOLD = 3;
 
-interface Props {
-  onExit: () => void;
-}
+type TraversalMode = "sequential" | "skip";
+type DisplayMode   = "notes" | "degrees";
 
-interface Stats {
-  correct: number;
-  streak: number;
-  bestStreak: number;
-}
+interface Props { onExit: () => void; }
+interface Stats { correct: number; streak: number; bestStreak: number; }
 
-interface FeedbackState {
-  text: string;
-  cls: "correct" | "wrong" | "";
+// Ping-pong index sequence: 0,1,2,...,n-1,n-2,...,1 (step=1) or skip every other (step=2)
+function buildCycle(n: number, step: number): number[] {
+  if (n === 0) return [];
+  const up: number[] = [];
+  for (let i = 0; i < n; i += step) up.push(i);
+  if (up.length === 1) return up;
+  const down = [...up].reverse().slice(1);
+  if (down[down.length - 1] === up[0]) down.pop();
+  return [...up, ...down];
 }
 
 export default function ScaleTrainer({ onExit }: Props) {
-  const [key, setKey]         = useState("C");
-  const [maxFret, setMaxFret] = useState(5);
-  const [target, setTarget]   = useState<FretPosition | null>(null);
-  const [feedback, setFeedback] = useState<FeedbackState>({ text: "", cls: "" });
-  const [stats, setStats]     = useState<Stats>({ correct: 0, streak: 0, bestStreak: 0 });
-  const [detectedNote, setDetectedNote] = useState<string | null>(null);
+  const [key, setKey]             = useState("G");
+  const [patternIdx, setPattern]  = useState(0);
+  const [mode, setMode]           = useState<TraversalMode>("sequential");
+  const [display, setDisplay]     = useState<DisplayMode>("notes");
+  const [cyclePos, setCyclePos]   = useState(0);
+  const [feedback, setFeedback]   = useState({ text: "", cls: "" });
+  const [stats, setStats]         = useState<Stats>({ correct: 0, streak: 0, bestStreak: 0 });
 
-  const stableRef   = useRef({ note: "", count: 0 });
-  const targetRef   = useRef<FretPosition | null>(null);
   const positionsRef = useRef<FretPosition[]>([]);
-  const statsRef    = useRef<Stats>({ correct: 0, streak: 0, bestStreak: 0 });
+  const cycleRef     = useRef<number[]>([]);
+  const posRef       = useRef(0);
+  const stableRef    = useRef({ note: "", count: 0 });
+  const statsRef     = useRef<Stats>({ correct: 0, streak: 0, bestStreak: 0 });
+  const advancingRef = useRef(false);
 
-  // Keep positions in sync with key/maxFret
-  const positions = getPentatonicPositions(key, maxFret);
-  positionsRef.current = positions;
-
-  function pickTarget(currentTarget: FretPosition | null): void {
-    if (positionsRef.current.length === 0) return;
-    let next: FretPosition;
-    do { next = positionsRef.current[Math.floor(Math.random() * positionsRef.current.length)]; }
-    while (positionsRef.current.length > 1 && next === currentTarget);
-    targetRef.current = next;
-    setTarget(next);
+  useEffect(() => {
+    const positions = getPatternPositions(key, patternIdx);
+    const step      = mode === "skip" ? 2 : 1;
+    const c         = buildCycle(positions.length, step);
+    positionsRef.current = positions;
+    cycleRef.current     = c;
+    posRef.current       = 0;
+    setCyclePos(0);
+    setFeedback({ text: "", cls: "" });
     stableRef.current = { note: "", count: 0 };
+    advancingRef.current = false;
+  }, [key, patternIdx, mode]);
+
+  function getTarget(): FretPosition | null {
+    const c = cycleRef.current;
+    const p = positionsRef.current;
+    if (!c.length || !p.length) return null;
+    return p[c[posRef.current % c.length]] ?? null;
+  }
+
+  function advanceCycle() {
+    const c = cycleRef.current;
+    const next = (posRef.current + 1) % c.length;
+    posRef.current = next;
+    setCyclePos(next);
+    stableRef.current = { note: "", count: 0 };
+    advancingRef.current = false;
     setFeedback({ text: "", cls: "" });
   }
 
-  // Start with a target on first audio frame
-  const initializedRef = useRef(false);
+  const handleNote = useCallback((note: NoteResult) => {
+    const target = getTarget();
+    if (!target || advancingRef.current) return;
 
-  function handleNote(note: NoteResult): void {
-    setDetectedNote(note.name);
-
-    // Pick initial target
-    if (!initializedRef.current && positionsRef.current.length > 0) {
-      initializedRef.current = true;
-      pickTarget(null);
-    }
-
-    if (!targetRef.current) return;
-
-    // Stability filter
     if (note.name === stableRef.current.note) {
       stableRef.current.count++;
     } else {
@@ -74,7 +83,8 @@ export default function ScaleTrainer({ onExit }: Props) {
     }
     if (stableRef.current.count < STABLE_THRESHOLD) return;
 
-    if (note.name === targetRef.current.note) {
+    if (note.name === target.note) {
+      advancingRef.current = true;
       const s = statsRef.current;
       const next: Stats = {
         correct: s.correct + 1,
@@ -83,34 +93,20 @@ export default function ScaleTrainer({ onExit }: Props) {
       };
       statsRef.current = next;
       setStats(next);
-      setFeedback({ text: `✓ ${targetRef.current.note}!`, cls: "correct" });
-      const prev = targetRef.current;
-      stableRef.current = { note: "", count: 0 };
-      setTimeout(() => pickTarget(prev), 600);
-    } else {
-      setFeedback({ text: `Hearing: ${note.name}`, cls: "wrong" });
+      setFeedback({ text: `✓ ${target.note}`, cls: "correct" });
+      setTimeout(advanceCycle, 500);
     }
-  }
+  }, []);
 
   useAudio({ onNote: handleNote });
 
-  function changeKey(k: string): void {
-    setKey(k);
-    initializedRef.current = false;
-    targetRef.current = null;
-    setTarget(null);
-    setFeedback({ text: "", cls: "" });
-  }
+  const target     = getTarget();
+  const positions  = positionsRef.current;
+  const { start, end } = patternFretRange(key, patternIdx);
 
-  function changeFret(delta: number): void {
-    setMaxFret(prev => {
-      const next = Math.max(MIN_FRET, Math.min(MAX_FRET, prev + delta));
-      initializedRef.current = false;
-      targetRef.current = null;
-      setTarget(null);
-      return next;
-    });
-  }
+  const c = cycleRef.current;
+  const halfLen = c.length > 0 ? Math.ceil(c.length / 2) : 0;
+  const goingUp = cyclePos < halfLen;
 
   return (
     <div className="scale-trainer">
@@ -119,18 +115,38 @@ export default function ScaleTrainer({ onExit }: Props) {
         <button className="btn-back btn" onClick={onExit}>← Home</button>
         <span className="sc-topbar-title">Major Pentatonic</span>
 
-        <select
-          className="sc-key-select"
-          value={key}
-          onChange={e => changeKey(e.target.value)}
-        >
-          {KEYS.map(k => <option key={k} value={k}>{k}</option>)}
+        <select className="sc-key-select" value={key} onChange={e => setKey(e.target.value)}>
+          {NOTE_NAMES.map(k => <option key={k} value={k}>{k}</option>)}
         </select>
 
-        <div className="sc-fret-row">
-          <button className="btn btn-sm" onClick={() => changeFret(-1)} disabled={maxFret <= MIN_FRET}>◄</button>
-          <span className="sc-fret-val">{maxFret} frets</span>
-          <button className="btn btn-sm" onClick={() => changeFret(1)} disabled={maxFret >= MAX_FRET}>►</button>
+        <div className="sc-pattern-btns">
+          {PATTERN_LABELS.map((label, i) => (
+            <button
+              key={label}
+              className={`sc-pattern-btn${patternIdx === i ? " sc-pattern-active" : ""}`}
+              onClick={() => setPattern(i)}
+            >
+              {i + 1}
+            </button>
+          ))}
+        </div>
+
+        <div className="sc-mode-btns">
+          <button className={`sc-mode-btn${mode === "sequential" ? " sc-mode-active" : ""}`} onClick={() => setMode("sequential")}>
+            Sequential
+          </button>
+          <button className={`sc-mode-btn${mode === "skip" ? " sc-mode-active" : ""}`} onClick={() => setMode("skip")}>
+            Skip (3rds)
+          </button>
+        </div>
+
+        <div className="sc-mode-btns">
+          <button className={`sc-mode-btn${display === "notes" ? " sc-mode-active" : ""}`} onClick={() => setDisplay("notes")}>
+            Notes
+          </button>
+          <button className={`sc-mode-btn${display === "degrees" ? " sc-mode-active" : ""}`} onClick={() => setDisplay("degrees")}>
+            Degrees
+          </button>
         </div>
       </div>
 
@@ -139,19 +155,29 @@ export default function ScaleTrainer({ onExit }: Props) {
         <Fretboard
           positions={positions}
           target={target}
-          maxFret={maxFret}
-          detectedNote={detectedNote}
+          startFret={start}
+          endFret={end}
+          rootKey={key}
+          displayMode={display}
         />
       </div>
 
       {/* Bottom bar */}
       <div className="sc-bottom">
+        <div className="sc-legend">
+          <span className="sc-legend-dot" style={{ background: "#4af8dc" }} />Target
+          <span className="sc-legend-dot" style={{ background: "#f0a500" }} />Root (1)
+          <span className="sc-legend-dot" style={{ background: "#1db954" }} />Scale note
+        </div>
+
         <div className="sc-target">
-          <div className="sc-target-note">{target?.note ?? "—"}</div>
+          <div className="sc-target-note">
+            {goingUp ? "↑" : "↓"} {target?.note ?? "—"}
+          </div>
           <div className="sc-target-hint">
             {target
-              ? `String ${STRING_NUMS[target.stringIdx]}  ·  Fret ${target.fret === 0 ? "open" : target.fret}`
-              : "Starting audio…"}
+              ? `${PATTERN_LABELS[patternIdx]} · ${PATTERN_HINTS[patternIdx]} · String ${STRING_NUMS[target.stringIdx]} · Fret ${target.fret}`
+              : "Waiting for audio…"}
           </div>
         </div>
 
