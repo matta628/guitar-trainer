@@ -25,6 +25,19 @@
 - Timer auto-scales per difficulty: easy 10s, medium 7s, hard 5s, expert 3.5s
 - Manual time adjuster removed; start screen shows the tier breakdown
 
+## Scale Trainer Extensions
+
+### Additional scales (do not implement until asked)
+- Minor pentatonic (same 5 patterns, different intervals)
+- Major scale (7 notes, 3-note-per-string patterns)
+- Natural minor scale
+
+### Additional traversal exercises (do not implement until asked)
+- String skipping — skip a string between notes
+- Pedal tone — alternate every note with a fixed root
+- Diatonic up-2-down-1 sequence (e.g. 1→2, 2→3, 3→5…)
+- Interval pairs (thirds, sixths played melodically)
+
 ## Notes / Open Questions
 - Profiles are local-only for now; cloud sync is out of scope until there's a backend
 - Global high score = highest score ever recorded across all local profiles

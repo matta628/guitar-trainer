@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAudio } from "../../hooks/useAudio";
 import {
-  getPatternPositions, patternFretRange, NOTE_NAMES, STRING_NUMS,
-  PATTERN_LABELS, PATTERN_HINTS,
+  mergePatternPositions, mergedFretRange, NOTE_NAMES, STRING_NUMS,
+  PATTERN_LABELS,
 } from "../../utils/fretboard";
 import Fretboard from "./Fretboard";
 import type { FretPosition, NoteResult } from "../../types";
@@ -32,8 +32,8 @@ function buildSeqN(n: number, g: number): number[] {
 }
 
 export default function ScaleTrainer({ onExit }: Props) {
-  const [key, setKey]             = useState("G");
-  const [patternIdx, setPattern]  = useState(0);
+  const [key, setKey]               = useState("G");
+  const [patternIdxs, setPatternIdxs] = useState<number[]>([0]);
   const [mode, setMode]           = useState<TraversalMode>("sequential");
   const [display, setDisplay]     = useState<DisplayMode>("notes");
   const [cyclePos, setCyclePos]   = useState(0);
@@ -47,8 +47,16 @@ export default function ScaleTrainer({ onExit }: Props) {
   const statsRef     = useRef<Stats>({ correct: 0, streak: 0, bestStreak: 0 });
   const advancingRef = useRef(false);
 
+  function togglePattern(i: number) {
+    setPatternIdxs(prev =>
+      prev.includes(i)
+        ? prev.length > 1 ? prev.filter(x => x !== i) : prev
+        : [...prev, i].sort((a, b) => a - b)
+    );
+  }
+
   useEffect(() => {
-    const positions = getPatternPositions(key, patternIdx);
+    const positions = mergePatternPositions(key, patternIdxs);
     const c = mode === "seq4" ? buildSeqN(positions.length, 4)
             : mode === "seq3" ? buildSeqN(positions.length, 3)
             : buildCycle(positions.length);
@@ -59,7 +67,7 @@ export default function ScaleTrainer({ onExit }: Props) {
     setFeedback({ text: "", cls: "" });
     stableRef.current = { note: "", count: 0 };
     advancingRef.current = false;
-  }, [key, patternIdx, mode]);
+  }, [key, patternIdxs, mode]);
 
   function getTarget(): FretPosition | null {
     const c = cycleRef.current;
@@ -108,7 +116,7 @@ export default function ScaleTrainer({ onExit }: Props) {
 
   const target     = getTarget();
   const positions  = positionsRef.current;
-  const { start, end } = patternFretRange(key, patternIdx);
+  const { start, end } = mergedFretRange(key, patternIdxs);
 
   const c = cycleRef.current;
   const halfLen = c.length > 0 ? Math.ceil(c.length / 2) : 0;
@@ -126,11 +134,11 @@ export default function ScaleTrainer({ onExit }: Props) {
         </select>
 
         <div className="sc-pattern-btns">
-          {PATTERN_LABELS.map((label, i) => (
+          {PATTERN_LABELS.map((_, i) => (
             <button
-              key={label}
-              className={`sc-pattern-btn${patternIdx === i ? " sc-pattern-active" : ""}`}
-              onClick={() => setPattern(i)}
+              key={i}
+              className={`sc-pattern-btn${patternIdxs.includes(i) ? " sc-pattern-active" : ""}`}
+              onClick={() => togglePattern(i)}
             >
               {i + 1}
             </button>
@@ -185,7 +193,7 @@ export default function ScaleTrainer({ onExit }: Props) {
           </div>
           <div className="sc-target-hint">
             {target
-              ? `${PATTERN_LABELS[patternIdx]} · ${PATTERN_HINTS[patternIdx]} · String ${STRING_NUMS[target.stringIdx]} · Fret ${target.fret}`
+              ? `Pattern${patternIdxs.length > 1 ? "s" : ""} ${patternIdxs.map(i => i + 1).join("+")} · String ${STRING_NUMS[target.stringIdx]} · Fret ${target.fret}`
               : "Waiting for audio…"}
           </div>
         </div>

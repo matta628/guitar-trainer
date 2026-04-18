@@ -84,6 +84,23 @@ export function getPatternPositions(key: string, patternIdx: number): FretPositi
   return out;
 }
 
+export function mergePatternPositions(key: string, patternIdxs: number[]): FretPosition[] {
+  const seen = new Set<string>();
+  const all: FretPosition[] = [];
+  for (const idx of patternIdxs) {
+    for (const pos of getPatternPositions(key, idx)) {
+      const k = `${pos.stringIdx}-${pos.fret}`;
+      if (!seen.has(k)) { seen.add(k); all.push(pos); }
+    }
+  }
+  return all.sort((a, b) => (OPEN_MIDI[a.stringIdx] + a.fret) - (OPEN_MIDI[b.stringIdx] + b.fret));
+}
+
+export function mergedFretRange(key: string, patternIdxs: number[]): { start: number; end: number } {
+  const ranges = patternIdxs.map(i => patternFretRange(key, i));
+  return { start: Math.min(...ranges.map(r => r.start)), end: Math.max(...ranges.map(r => r.end)) };
+}
+
 export function patternFretRange(key: string, patternIdx: number): { start: number; end: number } {
   const positions = getPatternPositions(key, patternIdx);
   const frets = positions.map(p => p.fret);
