@@ -48,11 +48,19 @@ export default function ScaleTrainer({ onExit }: Props) {
   const advancingRef = useRef(false);
 
   function togglePattern(i: number) {
-    setPatternIdxs(prev =>
-      prev.includes(i)
-        ? prev.length > 1 ? prev.filter(x => x !== i) : prev
-        : [...prev, i].sort((a, b) => a - b)
-    );
+    setPatternIdxs(prev => {
+      const lo = Math.min(...prev), hi = Math.max(...prev);
+      const fill = (a: number, b: number) => Array.from({ length: b - a + 1 }, (_, k) => a + k);
+      if (prev.includes(i)) {
+        if (prev.length === 1) return prev;          // can't deselect last
+        if (i === lo) return fill(lo + 1, hi);       // shrink from low end
+        if (i === hi) return fill(lo, hi - 1);       // shrink from high end
+        return [i];                                   // middle → reset to just this
+      }
+      if (i === lo - 1) return fill(i, hi);          // extend low end
+      if (i === hi + 1) return fill(lo, i);          // extend high end
+      return [i];                                     // non-adjacent → reset
+    });
   }
 
   useEffect(() => {
