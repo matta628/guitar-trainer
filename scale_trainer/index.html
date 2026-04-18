@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Scale Trainer</title>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+
+      body {
+        font-family: monospace;
+        background: #0a0a0a;
+        color: #e0e0e0;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 28px 16px;
+        gap: 20px;
+      }
+
+      h1 {
+        font-size: 1rem;
+        letter-spacing: 4px;
+        text-transform: uppercase;
+        color: #555;
+      }
+
+      /* ── Controls ─────────────────────────────────────────── */
+      #controls {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        flex-wrap: wrap;
+        justify-content: center;
+      }
+
+      .control-group {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 5px;
+      }
+
+      .control-label {
+        font-size: 0.6rem;
+        color: #555;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+      }
+
+      select {
+        background: #111;
+        color: #e0e0e0;
+        border: 1px solid #333;
+        border-radius: 4px;
+        padding: 6px 12px;
+        font-family: monospace;
+        font-size: 1rem;
+        cursor: pointer;
+        appearance: none;
+        text-align: center;
+      }
+
+      select:focus { outline: none; border-color: #1db954; }
+
+      .fret-control {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .fret-control button {
+        width: 30px;
+        height: 30px;
+        background: #1a1a1a;
+        color: #e0e0e0;
+        border: 1px solid #333;
+        border-radius: 4px;
+        font-size: 1.2rem;
+        cursor: pointer;
+        font-family: monospace;
+        line-height: 1;
+      }
+      .fret-control button:hover { border-color: #555; }
+
+      #fret-value {
+        font-size: 1rem;
+        color: #fff;
+        min-width: 50px;
+        text-align: center;
+      }
+
+      .btn {
+        padding: 8px 24px;
+        font-family: monospace;
+        font-size: 0.85rem;
+        background: #1db954;
+        color: #000;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-weight: bold;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+      }
+      .btn:hover { background: #1ed760; }
+      .btn:disabled { background: #333; color: #666; cursor: default; }
+
+      /* ── Fretboard ────────────────────────────────────────── */
+      #fretboard-wrap {
+        width: 100%;
+        max-width: 980px;
+        overflow-x: auto;
+        border-radius: 8px;
+      }
+
+      #fretboard-svg {
+        display: block;
+        width: 100%;
+        height: auto;
+        min-width: 320px;
+      }
+
+      /* SVG note dot animations */
+      .note-target {
+        animation: pulse-glow 0.9s ease-in-out infinite;
+      }
+
+      @keyframes pulse-glow {
+        0%, 100% { opacity: 1; }
+        50%       { opacity: 0.45; }
+      }
+
+      .note-flash {
+        animation: flash-correct 0.35s ease-out forwards;
+      }
+
+      @keyframes flash-correct {
+        0%   { opacity: 1; }
+        50%  { opacity: 0.2; }
+        100% { opacity: 1; }
+      }
+
+      /* ── Status ───────────────────────────────────────────── */
+      #status {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+        text-align: center;
+      }
+
+      #target-label {
+        font-size: 0.7rem;
+        color: #444;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+      }
+
+      #target-note {
+        font-size: 3.5rem;
+        font-weight: bold;
+        color: #4af8dc;
+        min-height: 56px;
+      }
+
+      #target-hint {
+        font-size: 0.75rem;
+        color: #555;
+        min-height: 18px;
+      }
+
+      #feedback {
+        font-size: 1rem;
+        font-weight: bold;
+        min-height: 24px;
+        color: #555;
+      }
+      #feedback.correct { color: #1db954; }
+      #feedback.wrong   { color: #e04040; }
+
+      /* ── Stats ────────────────────────────────────────────── */
+      #stats {
+        display: flex;
+        gap: 32px;
+        font-size: 0.75rem;
+        color: #444;
+        letter-spacing: 1px;
+      }
+      #stats span { color: #e0e0e0; }
+
+      /* ── Legend ───────────────────────────────────────────── */
+      #legend {
+        display: flex;
+        gap: 20px;
+        font-size: 0.7rem;
+        color: #444;
+        align-items: center;
+      }
+
+      .legend-dot {
+        display: inline-block;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        margin-right: 5px;
+        vertical-align: middle;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Scale Trainer</h1>
+
+    <div id="controls">
+      <div class="control-group">
+        <span class="control-label">Key</span>
+        <select id="key-select">
+          <option value="G">G major</option>
+          <option value="D">D major</option>
+          <option value="A">A major</option>
+          <option value="E">E major</option>
+          <option value="C" selected>C major</option>
+          <option value="F">F major</option>
+          <option value="B">B major</option>
+          <option value="Bb">Bb major</option>
+          <option value="Eb">Eb major</option>
+          <option value="Ab">Ab major</option>
+          <option value="F#">F# major</option>
+          <option value="Db">Db major</option>
+        </select>
+      </div>
+
+      <div class="control-group">
+        <span class="control-label">Frets shown</span>
+        <div class="fret-control">
+          <button id="btn-fret-down">−</button>
+          <span id="fret-value">5 frets</span>
+          <button id="btn-fret-up">+</button>
+        </div>
+      </div>
+
+      <div class="control-group">
+        <span class="control-label">&nbsp;</span>
+        <button class="btn" id="btn-connect">Connect mic</button>
+      </div>
+    </div>
+
+    <div id="fretboard-wrap">
+      <svg id="fretboard-svg" xmlns="http://www.w3.org/2000/svg"></svg>
+    </div>
+
+    <div id="legend">
+      <div><span class="legend-dot" style="background:#f0a500;"></span>Root</div>
+      <div><span class="legend-dot" style="background:#1db954;"></span>Scale note</div>
+      <div><span class="legend-dot" style="background:#4af8dc;"></span>Target</div>
+    </div>
+
+    <div id="status">
+      <div id="target-label">Play this note</div>
+      <div id="target-note">—</div>
+      <div id="target-hint">Connect mic to start</div>
+      <div id="feedback"></div>
+    </div>
+
+    <div id="stats">
+      <div>Correct &nbsp;<span id="stat-correct">0</span></div>
+      <div>Streak &nbsp;<span id="stat-streak">0</span></div>
+      <div>Best streak &nbsp;<span id="stat-best">0</span></div>
+    </div>
+
+    <script type="module" src="src/main.js"></script>
+  </body>
+</html>

@@ -1,0 +1,455 @@
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  background: #0d0d12;
+  color: #e5e5f0;
+  font-family: system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+button {
+  cursor: pointer;
+  border: none;
+  font-family: inherit;
+  font-size: inherit;
+}
+
+/* ── Home ────────────────────────────────────────────────────────────────── */
+.home {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  gap: 2.5rem;
+}
+
+.home-title {
+  font-size: clamp(2rem, 6vw, 3.5rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  background: linear-gradient(135deg, #4ade80 0%, #60a5fa 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.home-subtitle {
+  font-size: 1rem;
+  color: #666;
+  margin-top: 0.25rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.mode-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1.25rem;
+  width: 100%;
+  max-width: 560px;
+}
+
+.mode-card {
+  background: #1a1a24;
+  border: 1px solid #2a2a38;
+  border-radius: 16px;
+  padding: 2rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  cursor: pointer;
+  transition: border-color 0.2s, transform 0.15s, background 0.2s;
+  text-align: center;
+}
+
+.mode-card:hover {
+  border-color: #4ade80;
+  background: #1e1e2c;
+  transform: translateY(-2px);
+}
+
+.mode-card-icon { font-size: 2.5rem; }
+
+.mode-card-name {
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: #e5e5f0;
+}
+
+.mode-card-desc {
+  font-size: 0.85rem;
+  color: #888;
+  line-height: 1.4;
+}
+
+/* ── Common ──────────────────────────────────────────────────────────────── */
+.btn {
+  padding: 0.6rem 1.4rem;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  transition: opacity 0.15s, transform 0.1s;
+}
+
+.btn:hover  { opacity: 0.85; }
+.btn:active { transform: scale(0.97); }
+
+.btn-primary {
+  background: #4ade80;
+  color: #0d120d;
+  font-size: 1rem;
+  padding: 0.75rem 2rem;
+}
+
+.btn-secondary {
+  background: #1e1e2c;
+  color: #e5e5f0;
+  border: 1px solid #333;
+}
+
+.btn-back {
+  background: transparent;
+  color: #888;
+  border: 1px solid #333;
+  padding: 0.4rem 0.9rem;
+  font-size: 0.82rem;
+  border-radius: 6px;
+}
+
+.btn-back:hover { color: #e5e5f0; border-color: #555; }
+
+.btn-sm {
+  padding: 0.3rem 0.75rem;
+  font-size: 0.85rem;
+  border-radius: 6px;
+  background: #1e1e2c;
+  color: #e5e5f0;
+  border: 1px solid #333;
+}
+
+.mic-error {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: #f87171;
+  font-size: 1rem;
+  padding: 2rem;
+}
+
+/* ── Arcade ──────────────────────────────────────────────────────────────── */
+.arcade {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.arc-start, .arc-gameover {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.25rem;
+  padding: 2rem;
+  text-align: center;
+}
+
+.arc-start-title {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #4ade80;
+}
+
+.arc-start-hs {
+  color: #888;
+  font-size: 0.9rem;
+}
+
+.arc-time-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.9rem;
+  color: #aaa;
+}
+
+.arc-time-val {
+  font-weight: 700;
+  color: #e5e5f0;
+  min-width: 3ch;
+  text-align: center;
+}
+
+.arc-time-hint {
+  font-size: 0.78rem;
+  color: #555;
+}
+
+.arc-start-actions {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.arc-gameover-title {
+  font-size: 2.5rem;
+  font-weight: 800;
+  color: #f87171;
+}
+
+.arc-gameover-score {
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.arc-gameover-new-hs {
+  color: #fbbf24;
+  font-weight: 600;
+}
+
+.arc-gameover-diff {
+  color: #888;
+  font-size: 0.9rem;
+}
+
+.arc-gameover-actions {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+/* ── Arcade HUD ─────────────────────────────────────────────────────────── */
+.arc-hud {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.6rem 1rem;
+  background: #13131a;
+  border-bottom: 1px solid #1e1e2c;
+  flex-wrap: wrap;
+}
+
+.arc-hud-score {
+  font-family: 'Courier New', monospace;
+  font-weight: 700;
+  font-size: 1.05rem;
+}
+
+.arc-hud-lives {
+  font-size: 1rem;
+  letter-spacing: 0.05em;
+}
+
+.arc-diff-badge {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  border: 1px solid transparent;
+}
+
+.arc-hud-streak {
+  font-size: 0.82rem;
+  color: #fbbf24;
+  font-weight: 600;
+}
+
+.arc-hud-mult {
+  font-size: 0.78rem;
+  color: #fb923c;
+}
+
+/* ── Arcade Game ──────────────────────────────────────────────────────────── */
+.arc-game {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.arc-timer-wrap {
+  height: 6px;
+  background: #1a1a24;
+}
+
+.arc-timer-bar {
+  height: 100%;
+  width: 100%;
+  transition: background 0.3s;
+}
+
+.arc-game-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 1.5rem;
+}
+
+.arc-chord-name {
+  font-family: 'Courier New', monospace;
+  font-size: clamp(4rem, 15vw, 7rem);
+  font-weight: 700;
+  line-height: 1;
+  color: #fff;
+}
+
+.arc-diagram-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.arc-diagram-label {
+  font-size: 0.7rem;
+  color: #555;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.arc-feedback {
+  font-size: 1rem;
+  font-weight: 500;
+  min-height: 1.5em;
+  text-align: center;
+}
+
+.arc-feedback-correct { color: #4ade80; }
+.arc-feedback-wrong   { color: #f87171; }
+.arc-feedback-timeout { color: #fb923c; }
+.arc-feedback-neutral { color: #888; }
+
+/* ── Scale Trainer ───────────────────────────────────────────────────────── */
+.scale-trainer {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.sc-topbar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  background: #13131a;
+  border-bottom: 1px solid #1e1e2c;
+  flex-wrap: wrap;
+}
+
+.sc-topbar-title {
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: #aaa;
+  margin-right: 0.5rem;
+}
+
+.sc-key-select {
+  background: #1e1e2c;
+  color: #e5e5f0;
+  border: 1px solid #333;
+  border-radius: 6px;
+  padding: 0.3rem 0.6rem;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.sc-fret-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  color: #aaa;
+}
+
+.sc-fret-val {
+  font-weight: 600;
+  color: #e5e5f0;
+  min-width: 5ch;
+  text-align: center;
+}
+
+.sc-fretboard-wrap {
+  flex: 1;
+  overflow-x: auto;
+  padding: 1rem;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+}
+
+.sc-bottom {
+  padding: 0.75rem 1.25rem;
+  background: #13131a;
+  border-top: 1px solid #1e1e2c;
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.sc-target {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.sc-target-note {
+  font-family: 'Courier New', monospace;
+  font-size: 2rem;
+  font-weight: 700;
+  color: #4af8dc;
+  line-height: 1;
+}
+
+.sc-target-hint {
+  font-size: 0.78rem;
+  color: #666;
+}
+
+.sc-feedback {
+  font-size: 0.95rem;
+  font-weight: 500;
+  min-width: 8ch;
+}
+
+.sc-feedback-correct { color: #4ade80; }
+.sc-feedback-wrong   { color: #f87171; }
+
+.sc-stats {
+  display: flex;
+  gap: 1.5rem;
+  margin-left: auto;
+}
+
+.sc-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.1rem;
+}
+
+.sc-stat-val {
+  font-family: 'Courier New', monospace;
+  font-size: 1.3rem;
+  font-weight: 700;
+}
+
+.sc-stat-lbl {
+  font-size: 0.65rem;
+  color: #555;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
