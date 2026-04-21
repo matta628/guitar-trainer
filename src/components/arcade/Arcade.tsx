@@ -71,6 +71,7 @@ export default function Arcade({ onExit }: Props) {
   const [countInBeat, setCountInBeat]           = useState<number | null>(null);
   const [infiniteMode, setInfiniteMode]         = useState(false);
   const [freeStrumMode, setFreeStrumMode]       = useState(false);
+  const [isMatch, setIsMatch]                   = useState(false);
 
   const G = useRef({
     waiting:           false,
@@ -354,6 +355,7 @@ export default function Arcade({ onExit }: Props) {
     G.chord = chord;
     G.lastDetectedNotes = [];
     setCurrentChord(chord);
+    setIsMatch(false);
 
     const preview = G.progQueue[0] ?? "";
     G.nextChordVal = preview;
@@ -409,6 +411,8 @@ export default function Arcade({ onExit }: Props) {
   const handleChord = useCallback(({ chord, noteNames }: ChordResult) => {
     G.lastDetectedNotes = noteNames;
     if (chord && G.chord) {
+      const matched = chordMatches(noteNames, G.chord);
+      setIsMatch(matched);
       setFeedback({ text: `Hearing: ${chord}`, cls: "neutral" });
     }
   }, []);
@@ -657,7 +661,7 @@ export default function Arcade({ onExit }: Props) {
           </div>
         ) : (
           <>
-            <div className="arc-chord-name">{currentChord}</div>
+            <div className={`arc-chord-name${isMatch ? " arc-chord-match" : ""}`}>{currentChord}</div>
             {currentChord && (
               <div className="arc-diagram-wrap">
                 <span className="arc-diagram-label">voicing</span>

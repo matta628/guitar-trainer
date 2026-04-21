@@ -517,6 +517,10 @@ button {
   font-weight: 700;
   line-height: 1;
   color: #fff;
+  transition: color 0.1s;
+}
+.arc-chord-match {
+  color: #4ade80;
 }
 
 .arc-diagram-wrap {
