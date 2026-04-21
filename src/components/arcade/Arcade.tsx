@@ -70,6 +70,7 @@ export default function Arcade({ onExit }: Props) {
   const [beatResults, setBeatResults]           = useState<(boolean | null)[]>([null, null, null, null]);
   const [countInBeat, setCountInBeat]           = useState<number | null>(null);
   const [infiniteMode, setInfiniteMode]         = useState(false);
+  const [freeStrumMode, setFreeStrumMode]       = useState(false);
 
   const G = useRef({
     waiting:           false,
@@ -90,6 +91,7 @@ export default function Arcade({ onExit }: Props) {
     pendingAdvance:    false,
     countIn:           0,
     infiniteMode:      false,
+    freeStrum:         false,
     chordHistory:      [] as ChordEntry[],
     diffTimeMs:        {} as Record<string, number>,
     diffStartMs:       0,
@@ -320,6 +322,15 @@ export default function Arcade({ onExit }: Props) {
 
     G.beatNum = beat;
     setCurrentBeat(beat);
+
+    // Free strum: match on each beat tick instead of requiring a muted restrum
+    if (G.freeStrum && G.chord && G.lastDetectedNotes.length > 0) {
+      if (chordMatches(G.lastDetectedNotes, G.chord)) {
+        G.beatsHit.add(beat);
+        G.beatHitArr[beat] = true;
+      }
+    }
+
     setBeatResults([...G.beatHitArr]);
 
     if (beat === 3) {
@@ -378,6 +389,7 @@ export default function Arcade({ onExit }: Props) {
     G.beatHitArr = [false, false, false, false];
     G.lastDetectedNotes = []; G.nextChordVal = ""; G.pendingAdvance = false; G.countIn = 4;
     G.infiniteMode = infinite;
+    G.freeStrum    = freeStrumMode;
     G.chordHistory = []; G.diffTimeMs = {}; G.peakDiffIdx = 0;
     const d = findPlayableDiff(0);
     if (d >= 0) G.diffIdx = d;
@@ -465,6 +477,20 @@ export default function Arcade({ onExit }: Props) {
               {infiniteMode && (
                 <div className="arc-mode-hint">No lives — difficulty adapts to your playing</div>
               )}
+              <div className="arc-mode-toggle">
+                <button
+                  className={`arc-mode-btn${!freeStrumMode ? " active" : ""}`}
+                  onClick={() => setFreeStrumMode(false)}
+                >Beat Sync</button>
+                <button
+                  className={`arc-mode-btn${freeStrumMode ? " active" : ""}`}
+                  onClick={() => setFreeStrumMode(true)}
+                >Free Strum</button>
+              </div>
+              {freeStrumMode
+                ? <div className="arc-mode-hint">Strum anytime — no muting needed</div>
+                : <div className="arc-mode-hint">Mute between beats for best detection</div>
+              }
               <div className="arc-start-actions">
                 <button className="btn btn-primary" onClick={() => startGame(infiniteMode)}>Start Game</button>
                 <button className="btn-back btn" onClick={onExit}>← Home</button>
@@ -613,7 +639,7 @@ export default function Arcade({ onExit }: Props) {
           const isActive = currentBeat === i;
           const isPast   = currentBeat > i;
           const result   = beatResults[i];
-          const scored   = isPast && result !== null;
+          const scored   = isPast && result !== null && !freeStrumMode;
           const cls = `arc-beat-dot${isActive ? " active" : scored ? (result ? " hit" : " miss") : ""}`;
           return (
             <div key={i} className={cls}>
