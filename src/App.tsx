@@ -4,6 +4,9 @@ import Arcade from "./components/arcade/Arcade";
 import ScaleTrainer from "./components/scale/ScaleTrainer";
 import ChordLibrary from "./components/library/ChordLibrary";
 import type { Screen } from "./types";
+import { ensureProfiles } from "./utils/profiles";
+
+ensureProfiles();
 
 export default function App() {
   const [screen, setScreen] = useState<Screen>("home");

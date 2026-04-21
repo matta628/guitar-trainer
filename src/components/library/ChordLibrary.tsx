@@ -10,9 +10,7 @@ import {
 } from "../../utils/voicings";
 import type { ChordResult } from "../../types";
 
-interface Props {
-  onExit: () => void;
-}
+interface Props { onExit: () => void; }
 
 const TYPES: ChordType[] = ["major", "minor", "dom7", "maj7", "min7"];
 
@@ -20,19 +18,19 @@ const TYPES: ChordType[] = ["major", "minor", "dom7", "maj7", "min7"];
 interface ModalProps {
   chord: string;
   voicingIdx: number;
-  unlockedIndices: number[];
+  selectedIndices: number[];
   feedback: { text: string; ok: boolean } | null;
   onChangeVoicing: (idx: number) => void;
-  onToggleVoicing: (idx: number) => void;
+  onToggleCurrent: () => void;
   onClose: () => void;
 }
 
-function ChordModal({ chord, voicingIdx, unlockedIndices, feedback, onChangeVoicing, onToggleVoicing, onClose }: ModalProps) {
-  const voicings = getVoicings(chord);
-  const total    = voicings.length;
-  const pos      = voicings[voicingIdx] ?? null;
-  const svg      = renderDiagramSVG(pos, 2.2);
-  const isUnlocked = unlockedIndices.includes(voicingIdx);
+function ChordModal({ chord, voicingIdx, selectedIndices, feedback, onChangeVoicing, onToggleCurrent, onClose }: ModalProps) {
+  const voicings   = getVoicings(chord);
+  const total      = voicings.length;
+  const pos        = voicings[voicingIdx] ?? null;
+  const svg        = renderDiagramSVG(pos, 2.2);
+  const isSelected = selectedIndices.includes(voicingIdx);
 
   return (
     <div className="lib-modal-overlay" onClick={onClose}>
@@ -46,32 +44,27 @@ function ChordModal({ chord, voicingIdx, unlockedIndices, feedback, onChangeVoic
 
         {total > 1 && (
           <div className="lib-modal-voicing-row">
-            <button
-              className="lib-nav-btn"
-              onClick={() => onChangeVoicing((voicingIdx - 1 + total) % total)}
-            >◄</button>
+            <button className="lib-nav-btn" onClick={() => onChangeVoicing((voicingIdx - 1 + total) % total)}>◄</button>
             <div className="lib-modal-voicing-dots">
               {Array.from({ length: total }, (_, i) => (
                 <button
                   key={i}
-                  className={`lib-voicing-dot${i === voicingIdx ? " lib-voicing-dot-active" : ""}${unlockedIndices.includes(i) ? " lib-voicing-dot-unlocked" : ""}`}
-                  onClick={() => unlockedIndices.includes(i) ? onToggleVoicing(i) : onChangeVoicing(i)}
-                  title={unlockedIndices.includes(i) ? `Voicing ${i + 1} — click to re-lock` : `Voicing ${i + 1}`}
+                  className={`lib-voicing-dot${i === voicingIdx ? " lib-voicing-dot-active" : ""}${selectedIndices.includes(i) ? " lib-voicing-dot-selected" : ""}`}
+                  onClick={() => onChangeVoicing(i)}
+                  title={`Voicing ${i + 1}${selectedIndices.includes(i) ? " — selected" : ""}`}
                 />
               ))}
             </div>
-            <button
-              className="lib-nav-btn"
-              onClick={() => onChangeVoicing((voicingIdx + 1) % total)}
-            >►</button>
+            <button className="lib-nav-btn" onClick={() => onChangeVoicing((voicingIdx + 1) % total)}>►</button>
           </div>
         )}
 
-        <div className="lib-modal-status">
-          {isUnlocked
-            ? <span className="lib-modal-unlocked">✓ Voicing {voicingIdx + 1} unlocked in arcade</span>
-            : <span className="lib-modal-locked">Strum this chord correctly to unlock</span>}
-        </div>
+        <button
+          className={`lib-select-btn${isSelected ? " lib-select-btn-on" : ""}`}
+          onClick={onToggleCurrent}
+        >
+          {isSelected ? "✓ Selected for arcade — click to deselect" : "Select for arcade"}
+        </button>
 
         <div className={`lib-modal-feedback${feedback ? (feedback.ok ? " lib-feedback-ok" : " lib-feedback-bad") : ""}`}>
           {feedback ? feedback.text : "🎸 Listening…"}
@@ -84,24 +77,24 @@ function ChordModal({ chord, voicingIdx, unlockedIndices, feedback, onChangeVoic
 // ── Card ───────────────────────────────────────────────────────────────────────
 interface CardProps {
   chord: string;
-  unlockedIndices: number[];
+  selectedIndices: number[];
   onClick: () => void;
 }
 
-function ChordCard({ chord, unlockedIndices, onClick }: CardProps) {
-  const voicings = getVoicings(chord);
-  const prefIdx  = getVoicingPref(chord);
-  const svg      = renderDiagramSVG(voicings[prefIdx] ?? null, 1.5);
-  const total    = voicings.length;
-  const numUnlocked = unlockedIndices.length;
+function ChordCard({ chord, selectedIndices, onClick }: CardProps) {
+  const voicings    = getVoicings(chord);
+  const prefIdx     = getVoicingPref(chord);
+  const svg         = renderDiagramSVG(voicings[prefIdx] ?? null, 1.5);
+  const total       = voicings.length;
+  const numSelected = selectedIndices.length;
 
   return (
-    <button className={`lib-card${numUnlocked > 0 ? " lib-card-has-unlock" : ""}`} onClick={onClick}>
+    <button className={`lib-card${numSelected > 0 ? " lib-card-has-selected" : ""}`} onClick={onClick}>
       <div className="lib-card-header">
         <span className="lib-card-name">{chord}</span>
-        {numUnlocked > 0 && (
-          <span className="lib-card-unlock-badge" title={`${numUnlocked}/${total} voicings unlocked`}>
-            {numUnlocked}/{total}
+        {numSelected > 0 && (
+          <span className="lib-card-selected-badge" title={`${numSelected}/${total} voicings selected`}>
+            {numSelected}/{total}
           </span>
         )}
       </div>
@@ -112,22 +105,21 @@ function ChordCard({ chord, unlockedIndices, onClick }: CardProps) {
 
 // ── Main ───────────────────────────────────────────────────────────────────────
 export default function ChordLibrary({ onExit }: Props) {
-  const [tab, setTab]             = useState<ChordType>("major");
+  const [tab, setTab]               = useState<ChordType>("major");
   const [modalChord, setModalChord] = useState<string | null>(null);
   const [voicingIdx, setVoicingIdx] = useState(0);
-  const [unlockedMap, setUnlockedMap] = useState<Record<string, number[]>>(getAllUnlockedVoicings);
-  const [feedback, setFeedback]   = useState<{ text: string; ok: boolean } | null>(null);
+  const [selectedMap, setSelectedMap] = useState<Record<string, number[]>>(getAllUnlockedVoicings);
+  const [feedback, setFeedback]     = useState<{ text: string; ok: boolean } | null>(null);
 
   const activeChordRef   = useRef<string | null>(null);
   const activeVoicingRef = useRef(0);
 
+  // Listening only — confirms detection, no longer auto-selects
   const handleChord = useCallback(({ chord, noteNames }: ChordResult) => {
     if (!activeChordRef.current) return;
     const target = activeChordRef.current;
     if (chord && chordMatches(noteNames, target)) {
-      unlockVoicing(target, activeVoicingRef.current);
-      setUnlockedMap(getAllUnlockedVoicings());
-      setFeedback({ text: `✓ ${chord} — voicing ${activeVoicingRef.current + 1} unlocked!`, ok: true });
+      setFeedback({ text: `✓ ${chord} detected correctly`, ok: true });
     } else if (chord) {
       setFeedback({ text: `Hearing: ${chord}`, ok: false });
     }
@@ -157,22 +149,32 @@ export default function ChordLibrary({ onExit }: Props) {
     if (modalChord) setVoicingPref(modalChord, idx);
   }
 
-  function toggleVoicing(idx: number) {
+  function toggleCurrentVoicing() {
     if (!modalChord) return;
-    relockVoicing(modalChord, idx);
-    setUnlockedMap(getAllUnlockedVoicings());
-    setFeedback(null);
+    const idx      = activeVoicingRef.current;
+    const isSelected = (selectedMap[modalChord] ?? []).includes(idx);
+    if (isSelected) relockVoicing(modalChord, idx);
+    else             unlockVoicing(modalChord, idx);
+    setSelectedMap(getAllUnlockedVoicings());
   }
 
-  function unlockAllFirstVoicings() {
+  function selectAllFirstVoicings() {
     tabChords.forEach(chord => unlockVoicing(chord, 0));
-    setUnlockedMap(getAllUnlockedVoicings());
+    setSelectedMap(getAllUnlockedVoicings());
   }
 
-  const allChords     = getAllChords();
-  const tabChords     = allChords.filter(c => getChordType(c) === tab);
-  const totalUnlocked = Object.keys(unlockedMap).length;
-  const tabAllUnlocked = tabChords.every(c => (unlockedMap[c] ?? []).includes(0));
+  function deselectAllVoicings() {
+    tabChords.forEach(chord => {
+      (selectedMap[chord] ?? []).forEach(idx => relockVoicing(chord, idx));
+    });
+    setSelectedMap(getAllUnlockedVoicings());
+  }
+
+  const allChords          = getAllChords();
+  const tabChords          = allChords.filter(c => getChordType(c) === tab);
+  const totalSelected      = Object.keys(selectedMap).length;
+  const tabAllFirstSelected = tabChords.every(c => (selectedMap[c] ?? []).includes(0));
+  const tabNoneSelected    = tabChords.every(c => (selectedMap[c] ?? []).length === 0);
 
   return (
     <div className="lib-screen">
@@ -180,8 +182,8 @@ export default function ChordLibrary({ onExit }: Props) {
         <button className="btn-back btn" onClick={onExit}>← Home</button>
         <span className="lib-title">Chord Library</span>
         <span className="lib-subtitle">
-          Click a chord to open it and strum to unlock it for arcade
-          · {totalUnlocked} chord{totalUnlocked !== 1 ? "s" : ""} unlocked
+          Click a chord to browse voicings and select them for arcade
+          · {totalSelected} chord{totalSelected !== 1 ? "s" : ""} selected
         </span>
       </div>
 
@@ -197,11 +199,19 @@ export default function ChordLibrary({ onExit }: Props) {
         ))}
         <button
           className="lib-tab-unlock-all"
-          onClick={unlockAllFirstVoicings}
-          disabled={tabAllUnlocked}
-          title="Unlock voicing 1 of every chord in this tab without strumming"
+          onClick={selectAllFirstVoicings}
+          disabled={tabAllFirstSelected}
+          title="Select voicing 1 of every chord in this tab"
         >
-          {tabAllUnlocked ? "✓ All 1st voicings unlocked" : "Unlock all (1st voicing)"}
+          {tabAllFirstSelected ? "✓ All 1st voicings selected" : "Select all 1st voicings"}
+        </button>
+        <button
+          className="lib-tab-unlock-all lib-tab-deselect-all"
+          onClick={deselectAllVoicings}
+          disabled={tabNoneSelected}
+          title="Deselect all voicings in this tab"
+        >
+          Deselect all
         </button>
       </div>
 
@@ -210,7 +220,7 @@ export default function ChordLibrary({ onExit }: Props) {
           <ChordCard
             key={chord}
             chord={chord}
-            unlockedIndices={unlockedMap[chord] ?? []}
+            selectedIndices={selectedMap[chord] ?? []}
             onClick={() => openModal(chord)}
           />
         ))}
@@ -220,10 +230,10 @@ export default function ChordLibrary({ onExit }: Props) {
         <ChordModal
           chord={modalChord}
           voicingIdx={voicingIdx}
-          unlockedIndices={unlockedMap[modalChord] ?? []}
+          selectedIndices={selectedMap[modalChord] ?? []}
           feedback={feedback}
           onChangeVoicing={changeVoicing}
-          onToggleVoicing={toggleVoicing}
+          onToggleCurrent={toggleCurrentVoicing}
           onClose={closeModal}
         />
       )}

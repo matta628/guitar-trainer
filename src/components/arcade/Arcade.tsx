@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useAudio } from "../../hooks/useAudio";
 import { randomChord, chordMatches, DIFFICULTIES, DIFFICULTY_ORDER } from "../../utils/chordUtils";
 import { isChordUnlocked, getAllUnlockedVoicings, chordDiagramSVG } from "../../utils/voicings";
+import { profileKey } from "../../utils/profiles";
 import { pickProgression } from "../../utils/progressions";
 import type { ChordResult, Difficulty } from "../../types";
 
@@ -45,8 +46,8 @@ interface SummaryData {
   diffTimeMs:   Record<string, number>;
 }
 
-function getBest(): number { return parseInt(localStorage.getItem("guitar_arcade_best") ?? "0", 10); }
-function saveBest(s: number): void { localStorage.setItem("guitar_arcade_best", String(s)); }
+function getBest(): number { return parseInt(localStorage.getItem(profileKey("arcade_best")) ?? "0", 10); }
+function saveBest(s: number): void { localStorage.setItem(profileKey("arcade_best"), String(s)); }
 
 function availableChords(diffIdx: number): string[] {
   const diff = DIFFICULTY_ORDER[diffIdx] as Difficulty;

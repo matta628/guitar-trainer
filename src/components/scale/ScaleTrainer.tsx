@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { profileKey } from "../../utils/profiles";
 import { useAudio } from "../../hooks/useAudio";
 import {
   mergePatternPositions, mergedFretRange, NOTE_NAMES, STRING_NUMS,
@@ -112,21 +113,29 @@ function buildCycles(
   return { up: forward, down: backward };
 }
 
+// ── Prefs persistence ──────────────────────────────────────────────────────────
+
+function loadScalePrefs() {
+  try { return JSON.parse(localStorage.getItem(profileKey("scale_prefs")) ?? "{}"); }
+  catch { return {}; }
+}
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function ScaleTrainer({ onExit }: Props) {
-  const [key, setKey]                 = useState("G");
-  const [patternIdxs, setPatternIdxs] = useState<number[]>([0]);
-  const [traversal, setTraversal]     = useState<TraversalMode>("sequential");
-  const [direction, setDirection]     = useState<Direction>("up");
-  const [display, setDisplay]         = useState<DisplayMode>("notes");
+  const saved = loadScalePrefs();
+  const [key, setKey]                 = useState<string>(saved.key ?? "G");
+  const [patternIdxs, setPatternIdxs] = useState<number[]>(saved.patternIdxs ?? [0]);
+  const [traversal, setTraversal]     = useState<TraversalMode>(saved.traversal ?? "sequential");
+  const [direction, setDirection]     = useState<Direction>(saved.direction ?? "up");
+  const [display, setDisplay]         = useState<DisplayMode>(saved.display ?? "notes");
   const [cyclePos, setCyclePos]       = useState(0);
   const [feedback, setFeedback]       = useState({ text: "", cls: "" });
   const [stats, setStats]             = useState<Stats>({ correct: 0, streak: 0, bestStreak: 0 });
   const [toast, setToast]             = useState("");
   const toastTimerRef                 = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [metronomeOn, setMetronomeOn] = useState(false);
-  const [bpm, setBpm]                 = useState(80);
+  const [metronomeOn, setMetronomeOn] = useState<boolean>(saved.metronomeOn ?? false);
+  const [bpm, setBpm]                 = useState<number>(saved.bpm ?? 80);
   const metroIntervalRef              = useRef<ReturnType<typeof setInterval> | null>(null);
   const metroCtxRef                   = useRef<AudioContext | null>(null);
 
@@ -141,6 +150,12 @@ export default function ScaleTrainer({ onExit }: Props) {
   const stableRef     = useRef({ note: "", count: 0 });
   const statsRef      = useRef<Stats>({ correct: 0, streak: 0, bestStreak: 0 });
   const advancingRef  = useRef(false);
+
+  useEffect(() => {
+    localStorage.setItem(profileKey("scale_prefs"), JSON.stringify(
+      { key, patternIdxs, traversal, direction, display, bpm, metronomeOn }
+    ));
+  }, [key, patternIdxs, traversal, direction, display, bpm, metronomeOn]);
 
   function getCycle() {
     return directionRef.current === "up" ? upCycleRef.current : downCycleRef.current;

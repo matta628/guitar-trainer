@@ -1,4 +1,5 @@
 import guitarDataRaw from "@tombatossals/chords-db/lib/guitar.json";
+import { profileKey } from "./profiles";
 
 export interface GuitarPosition {
   frets: number[];
@@ -49,21 +50,20 @@ export function getVoicings(chordName: string): GuitarPosition[] {
   return guitarData.chords[dbKey]?.find(c => c.suffix === dbSuffix)?.positions ?? [];
 }
 
-// ── Voicing preference (per chord, persisted) ─────────────────────────────────
-const VOICING_PREF_KEY = "guitar_voicing_prefs";
+// ── Voicing preference (per chord, persisted per profile) ─────────────────────
 
 export function getVoicingPref(chordName: string): number {
   try {
-    const prefs = JSON.parse(localStorage.getItem(VOICING_PREF_KEY) ?? "{}");
+    const prefs = JSON.parse(localStorage.getItem(profileKey("voicing_prefs")) ?? "{}");
     return Number(prefs[chordName] ?? 0);
   } catch { return 0; }
 }
 
 export function setVoicingPref(chordName: string, idx: number): void {
   try {
-    const prefs = JSON.parse(localStorage.getItem(VOICING_PREF_KEY) ?? "{}");
+    const prefs = JSON.parse(localStorage.getItem(profileKey("voicing_prefs")) ?? "{}");
     prefs[chordName] = idx;
-    localStorage.setItem(VOICING_PREF_KEY, JSON.stringify(prefs));
+    localStorage.setItem(profileKey("voicing_prefs"), JSON.stringify(prefs));
   } catch {}
 }
 
@@ -72,17 +72,16 @@ export function getVoicing(chordName: string): GuitarPosition | null {
   return voicings[getVoicingPref(chordName)] ?? voicings[0] ?? null;
 }
 
-// ── Per-voicing unlock tracking ───────────────────────────────────────────────
+// ── Per-voicing unlock tracking (per profile) ─────────────────────────────────
 // Structure: { "Bbm": [0, 2], "Am": [0] }  → voicing indices that are unlocked
-const UNLOCK_KEY = "guitar_unlocked_voicings";
 
 function loadUnlockMap(): Record<string, number[]> {
-  try { return JSON.parse(localStorage.getItem(UNLOCK_KEY) ?? "{}"); }
+  try { return JSON.parse(localStorage.getItem(profileKey("unlocked_voicings")) ?? "{}"); }
   catch { return {}; }
 }
 
 function saveUnlockMap(map: Record<string, number[]>): void {
-  localStorage.setItem(UNLOCK_KEY, JSON.stringify(map));
+  localStorage.setItem(profileKey("unlocked_voicings"), JSON.stringify(map));
 }
 
 export function getAllUnlockedVoicings(): Record<string, number[]> {
